@@ -1,0 +1,6 @@
+mach_inject by Jonathan Rentzsch (https://github.com/rentzsch/mach_inject, http://rentzsch.com)
+libMaxOS by Squ1dd13
+ProcessCatcher by Squ1dd13
+injected by Squ1dd13
+FlatPrefs by Squ1dd13
+huge thanks to Ikea for making my desk chair
