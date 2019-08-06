@@ -3,7 +3,7 @@
 //  Checkers
 //
 //  Created by Theresa May on 09/11/2018.
-//  Copyright © 2018 Squid. All rights reserved.
+//  Copyright Â© 2018 Squid. All rights reserved.
 //
 
 //This is the library which will be injected into processes.
@@ -16,10 +16,12 @@
 @import MachO;
 
 static NSMutableArray *toLog;
-#define DOCUMENTS NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES)[0]
+
+#define TWEAKSDIRECTORY @"/Library/Application\\ Support/MaxOS/Tweaks/"
+#define LOGDIR @"/Library/Application\\ Support/MaxOS/"
 
 void fileLog() {
-    NSString *path = [DOCUMENTS stringByAppendingPathComponent:@"MaxOSLog.txt"];
+    NSString *path = [LOGDIR stringByAppendingPathComponent:@"MaxOSLog.txt"];
     if(![[NSFileManager defaultManager] fileExistsAtPath:path]) {
         [@"" writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
     }
@@ -167,11 +169,10 @@ NSArray *classesFromDylib(NSString *dylibPath) {
 
 static NSMutableArray *dylibClasses;
 
-#define DOCUMENTS NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES)[0]
 @implementation MaxOS
 
 +(NSArray *)tweaksToInject {
-    NSString *dir = [DOCUMENTS stringByAppendingPathComponent:@"MaxOS"];
+    NSString *dir = TWEAKSDIRECTORY;
     
     NSError *err;
     NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:dir error:&err];
@@ -340,7 +341,7 @@ __attribute__((constructor)) void modify() {
     toLog = [NSMutableArray array];
     dylibClasses = [NSMutableArray array];
     
-    unlink([[DOCUMENTS stringByAppendingPathComponent:@"MaxOSLog.txt"] UTF8String]); //aaaaakillit
+    unlink([[LOGDIR stringByAppendingPathComponent:@"MaxOSLog.txt"] UTF8String]); //aaaaakillit
     SQLog(@"MaxOS loaded into process %@.", [[NSBundle mainBundle] bundleIdentifier]);
     
     NSArray *dylibs = [MaxOS tweaksToInject];
