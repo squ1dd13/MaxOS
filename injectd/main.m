@@ -9,52 +9,36 @@
 #import <Foundation/Foundation.h>
 @import AppKit;
 
-//injectd waits for apps to be launched and (indirectly) injects MaxOS into them. ('Indirectly' because it actually runs ProcessCatcher on the app, which is when the injection happens.)
-//Launch this yourself, or use launchd instead.
+#define BOOTSTRAP @"/Library/Application\\ Support/MaxOS/bootstrap.dylib"
+#define MAXOS @"/Library/Application\\ Support/MaxOS/libMaxOS.dylib"
+#define PROC_CATCHER @"/Library/Application\\ Support/MaxOS/ProcessCatcher"
 
-//sudo chmod 4755 <this binary>
-//sudo chown root <this binary>
-
-static NSString *bootstrap;
-static NSString *MaxOS;
-static NSString *ProcessCatcher;
-
-@interface Daemon : NSObject
+@interface InjectDaemon : NSObject
 @end
 
-@implementation Daemon
+@implementation InjectDaemon
 
 -(void)respondToNotification:(NSNotification *)notif {
-    NSDictionary *userInfo = [notif userInfo];
-    NSRunningApplication *app = userInfo[NSWorkspaceApplicationKey];
-    pid_t pid = [app processIdentifier];
-    NSLog(@"Launched: %d", pid);
-    
-    NSString *command = [NSString stringWithFormat:@"sudo %@ %d %@ %@", ProcessCatcher, pid, MaxOS, bootstrap];
-    
-    setuid(0);
-    system([command UTF8String]);
+	//Get the pid for the process to inject into.
+	NSDictionary *userInfo = [notif userInfo];
+	NSRunningApplication *app = userInfo[NSWorkspaceApplicationKey];
+	pid_t pid = [app processIdentifier];
+	
+	printf("\033[01;33minjectd: \033[0m");
+	printf("detected process load with pid %d \033[0;32m(%s)\033[0m\n", pid, [[app bundleIdentifier] UTF8String]);
+	
+	//Run ProcessCatcher and give it the pid of the target process, the path to libMaxOS, and the path to the bootstrap dylib. The output is piped to /dev/null to avoid clutter.
+	NSString *loadCommand = [NSString stringWithFormat:@"%@ %d %@ %@ > /dev/null 2>&1", PROC_CATCHER, pid, MAXOS, BOOTSTRAP];
+	system([loadCommand UTF8String]);
 }
 
 @end
 
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
-        if(getuid() < 1) {
-            NSLog(@"Please don't run me as root. Instead, run 'sudo chmod 4755 <this program>' and 'sudo chown root <this program>' and run me normally.");
-            exit(EXIT_FAILURE);
-        }
-        
-        //Set these before we change to root.
-        NSString *docs = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES)[0];
-        NSString *run = [docs stringByAppendingPathComponent:@"MaxOS"];
-        
-#define escape(str) [str stringByReplacingOccurrencesOfString:@" " withString:@"\\ "]
-        
-        bootstrap = escape([run stringByAppendingPathComponent:@"bootstrap.dylib"]);
-        MaxOS = escape([run stringByAppendingPathComponent:@"libMaxOS.dylib"]);
-        ProcessCatcher = escape([run stringByAppendingPathComponent:@"ProcessCatcher"]);
-        Daemon *daemon = [Daemon new];
+        InjectDaemon *daemon = [InjectDaemon new];
+		
+		//Start observing for process launches.
         [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:daemon selector:@selector(respondToNotification:) name:NSWorkspaceDidLaunchApplicationNotification object:nil];
         [[NSRunLoop currentRunLoop] run];
     }
